@@ -9,7 +9,7 @@
 
       <button @click="capturerEnable">Tekan</button>
       <button @click="enableServer">Enable Server</button>
-      <video id="judulvid" width="320" height="240" controls></video>
+      <img id="judulvid" width="320" height="240" />
       <video id="videox" width="320" height="240" controls></video>
     </main>
   </div>
@@ -48,30 +48,20 @@ export default {
       video.onloadedmetadata = e => video.play();
 
       const judulvid = document.querySelector("#judulvid");
-      //   judulvid.srcObject = stream;
-      //   judulvid.onloadedmetadata = e => judulvid.play();
 
       console.log(stream);
       var options = { mimeType: "video/webm; codecs=vp9" };
       var mediaRecorder = new MediaRecorder(stream);
 
-      mediaRecorder.ondataavailable = function(event) {
-        if (event.data.size > 0) {
-          console.log(event);
-          judulvid.src = window.URL.createObjectURL(event.data);
-        //   video.onloadedmetadata = e => video.play();
-          video.play();
-        } else {
-          // ...
-        }
-      };
-
-      mediaRecorder.start(2000);
-
-      //   setTimeout(() => {
-      //     mediaRecorder.stop();
-      //   }, 9000);
-      //   //   recorder.start();
+      setInterval(() => {
+        const canvas = document.createElement("canvas");
+        canvas.getContext("2d").drawImage(video, 0, 0, 1280, 720);
+        canvas.toBlob(blob => {
+          console.log(blob);
+        //   var imageUrl = window.URL.createObjectURL(blob);
+        //   judulvid.src = imageUrl;
+        });
+      }, 100);
     },
     handleError(e) {
       console.log(e);
