@@ -9,7 +9,8 @@
 
       <button @click="capturerEnable">Tekan</button>
       <button @click="enableServer">Enable Server</button>
-      <video id="video" width="320" height="240" controls></video>
+      <video id="judulvid" width="320" height="240" controls></video>
+      <video id="videox" width="320" height="240" controls></video>
     </main>
   </div>
 </template>
@@ -41,9 +42,36 @@ export default {
     },
     handleStream(stream) {
       console.log("hal");
-      const video = document.querySelector("video");
+
+      const video = document.querySelector("#videox");
       video.srcObject = stream;
       video.onloadedmetadata = e => video.play();
+
+      const judulvid = document.querySelector("#judulvid");
+      //   judulvid.srcObject = stream;
+      //   judulvid.onloadedmetadata = e => judulvid.play();
+
+      console.log(stream);
+      var options = { mimeType: "video/webm; codecs=vp9" };
+      var mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = function(event) {
+        if (event.data.size > 0) {
+          console.log(event);
+          judulvid.src = window.URL.createObjectURL(event.data);
+        //   video.onloadedmetadata = e => video.play();
+          video.play();
+        } else {
+          // ...
+        }
+      };
+
+      mediaRecorder.start(2000);
+
+      //   setTimeout(() => {
+      //     mediaRecorder.stop();
+      //   }, 9000);
+      //   //   recorder.start();
     },
     handleError(e) {
       console.log(e);
@@ -53,6 +81,8 @@ export default {
         { types: ["window", "screen"] },
         (err, sources) => {
           sources.forEach(async element => {
+            console.log(element);
+
             if (element.name == "Entire screen") {
               try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -68,6 +98,7 @@ export default {
                     }
                   }
                 });
+
                 this.handleStream(stream);
               } catch (e) {
                 this.handleError(e);
