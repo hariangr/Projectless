@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>ok</h1>
+    <img id="judulvid" width="1280" height="720" />
+
+    <script>
+        let imgPr = document.querySelector("#judulvid");
+
+        var full = 'ws://' + location.hostname + ':3000';
+        console.log(full);
+        var exampleSocket = new WebSocket(full);
+        exampleSocket.onopen = function (event) {
+            console.log("Here's some text that the server is urgently awaiting!");
+        };
+        exampleSocket.onmessage = function (event) {
+            let x = JSON.parse(event.data)
+            imgPr.src = x.data;
+        }
+
+    </script>
+</body>
+
+</html>

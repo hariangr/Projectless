@@ -11,18 +11,25 @@
       <button @click="enableServer">Enable Server</button>
       <video id="videox" width="320" height="240" controls></video>
     </main>
-    <img id="judulvid" width="320" height="240" />
   </div>
 </template>
 
 <script>
 import SystemInformation from "./LandingPage/SystemInformation";
 import { desktopCapturer } from "electron";
+const WebSocket = require("ws");
 import * as Express from "express";
 
 export default {
   name: "dashboard-page",
   components: { SystemInformation },
+  data() {
+    return {
+      connections: [],
+      webSocketServer: null,
+      serverEnabled: false
+    };
+  },
   methods: {
     open(link) {
       this.$electron.shell.openExternal(link);
@@ -32,13 +39,18 @@ export default {
 
       const express = require("express");
       const app = express();
-      const port = 3099;
+      const port = 4000;
 
-      app.get("/", (req, res) => res.send("Hello World!"));
+      app.get("/", (req, res) => {
+        // res.send("Hello World!");
+        res.sendFile("view.html", { root: __dirname });
+      });
 
       app.listen(port, () =>
         console.log(`Example app listening on port ${port}!`)
       );
+
+      this.enableWebsocket();
     },
     handleStream(stream) {
       console.log("hal");
@@ -53,16 +65,16 @@ export default {
       var options = { mimeType: "video/webm; codecs=vp9" };
       var mediaRecorder = new MediaRecorder(stream);
 
-      setInterval(() => {
-        const canvas = document.createElement("canvas");
-        canvas.getContext("2d").drawImage(video, 0, 0);
-        canvas.toBlob(blob => {
-          console.log(blob);
+      const canvas = document.createElement("canvas");
+      canvas.height = 720;
+      canvas.width = 1280;
+      const ctx = canvas.getContext("2d");
 
-          var imageUrl = window.URL.createObjectURL(blob);
-          judulvid.src = imageUrl;
-        });
-      }, 1000 / 30);
+      setInterval(() => {
+        ctx.drawImage(video, 0, 0, 1280, 720);
+        var base64Str = canvas.toDataURL("image/jpeg", 0.3);
+        this.sendImage(base64Str);
+      }, 1000 / 24);
     },
     handleError(e) {
       console.log(e);
@@ -98,6 +110,58 @@ export default {
           });
         }
       );
+    },
+    sendImage(message) {
+      this.connections.forEach(client => {
+        client.send(JSON.stringify({ event: "imgbuff", data: message }));
+      });
+    },
+    handleMessage(ws, message) {
+      console.log("received: %s", message);
+      let _understood = JSON.parse(message);
+      let event = _understood.event;
+      let payload = _understood.data;
+
+      switch (event) {
+        case "cheese":
+          this.handleCheese(ws, payload);
+          break;
+        case "save":
+          this.handleSave(ws, payload);
+          break;
+        case "ping":
+          this.handlePing(ws, payload);
+          break;
+        case "new":
+          this.handleNew(ws, payload);
+          break;
+        default:
+          break;
+      }
+
+      ws.send("somethingx");
+    },
+    handleConnection(ws) {
+      console.log("a user connected");
+      this.connections.push(ws);
+
+      ws.on("disconnect", function() {
+        console.log("user disconnected");
+      });
+
+      ws.on("message", msg => this.handleMessage(ws, msg));
+    },
+    enableWebsocket() {
+      console.log("ws");
+
+      this.serverEnabled = true;
+      this.webSocketServer = new WebSocket.Server({ port: 3000 });
+
+      this.webSocketServer.on("connection", this.handleConnection);
+    },
+    disableWebsocket() {
+      this.serverEnabled = false;
+      this.webSocketServer = null;
     }
   }
 };
