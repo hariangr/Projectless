@@ -9,9 +9,9 @@
 
       <button @click="capturerEnable">Tekan</button>
       <button @click="enableServer">Enable Server</button>
-      <img id="judulvid" width="320" height="240" />
       <video id="videox" width="320" height="240" controls></video>
     </main>
+    <img id="judulvid" width="320" height="240" />
   </div>
 </template>
 
@@ -55,13 +55,14 @@ export default {
 
       setInterval(() => {
         const canvas = document.createElement("canvas");
-        canvas.getContext("2d").drawImage(video, 0, 0, 1280, 720);
+        canvas.getContext("2d").drawImage(video, 0, 0);
         canvas.toBlob(blob => {
           console.log(blob);
-        //   var imageUrl = window.URL.createObjectURL(blob);
-        //   judulvid.src = imageUrl;
+
+          var imageUrl = window.URL.createObjectURL(blob);
+          judulvid.src = imageUrl;
         });
-      }, 100);
+      }, 1000 / 30);
     },
     handleError(e) {
       console.log(e);
@@ -103,4 +104,7 @@ export default {
 </script>
 
 <style>
+img {
+  object-fit: contain;
+}
 </style>
