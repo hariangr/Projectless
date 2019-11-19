@@ -72,7 +72,7 @@ export default {
 
       setInterval(() => {
         ctx.drawImage(video, 0, 0, 1280, 720);
-        var base64Str = canvas.toDataURL("image/jpeg", 0.3);
+        var base64Str = canvas.toDataURL("image/jpeg", 0.5);
         this.sendImage(base64Str);
       }, 1000 / 24);
     },
