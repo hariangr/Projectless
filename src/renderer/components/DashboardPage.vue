@@ -6,6 +6,15 @@
       <button @click="enableServer">Enable Server</button>
       <button @click="disableServer">Disable Server</button>
       <span v-if="this.webSocketServer != null">Koneksi {{ this.clientCount }}</span>
+
+      <form class="slidecontainer">
+        <input type="range" min="1" max="100" v-model="streamQuality" class="slider" id="myRange" />
+        <input type="checkbox" name="ck" id="ck1" v-model="enableCompression" />
+
+        <p v-if="this.enableCompression">Kompresi to source ratio {{latestCompressionRate}}</p>
+
+        <h3>Kualitas {{streamQuality}}</h3>
+      </form>
     </div>
 
     <main>
@@ -18,6 +27,8 @@
 <script>
 import SystemInformation from "./LandingPage/SystemInformation";
 import { desktopCapturer } from "electron";
+import * as lzString from "./lz-string";
+
 const WebSocket = require("ws");
 import * as Express from "express";
 
@@ -29,7 +40,10 @@ export default {
       clientCount: 0,
       webSocketServer: null,
       serverEnabled: false,
-      expressServer: null
+      expressServer: null,
+      streamQuality: 30,
+      enableCompression: true,
+      latestCompressionRate: 0
     };
   },
   methods: {
@@ -97,7 +111,7 @@ export default {
     },
     handleStream(stream) {
       // const video = document.querySelector("#videox");
-      const video = document.createElement("video")
+      const video = document.createElement("video");
       video.srcObject = stream;
       video.onloadedmetadata = e => video.play();
 
@@ -112,15 +126,32 @@ export default {
       const ctx = canvas.getContext("2d");
 
       setInterval(() => {
+        console.log(this.streamQuality / 100);
+
         ctx.drawImage(video, 0, 0, 1280, 720);
-        var base64Str = canvas.toDataURL("image/jpeg", 0.1);
+        var base64Str = canvas.toDataURL(
+          "image/jpeg",
+          this.streamQuality / 100
+        );
         this.sendImage(base64Str);
       }, 1000 / 24);
     },
     sendImage(message) {
-      this.webSocketServer.clients.forEach(client => {
-        client.send(JSON.stringify({ event: "imgbuff", data: message }));
-      });
+      if (this.enableCompression) {
+        let compressed = lzString.compressToUTF16(message);
+
+        this.latestCompressionRate = (compressed.length / message.length) * 100;
+
+        this.webSocketServer.clients.forEach(client => {
+          client.send(
+            JSON.stringify({ event: "imgbuffcompressed", data: compressed })
+          );
+        });
+      } else {
+        this.webSocketServer.clients.forEach(client => {
+          client.send(JSON.stringify({ event: "imgbuff", data: message }));
+        });
+      }
     },
     handleMessage(ws, message) {
       console.log("received: %s", message);
