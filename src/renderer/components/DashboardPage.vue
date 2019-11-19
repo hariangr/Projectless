@@ -1,15 +1,18 @@
 <template>
   <div id="wrapper">
     <img id="logo" src="~@/assets/logo.png" alt="electron-vue" />
-    <main>
-      <div class="left-side">
-        <span class="title">Welcome to your old project!</span>
-        <system-information></system-information>
-      </div>
-
-      <button @click="capturerEnable">Tekan</button>
+    <div>
       <button @click="enableServer">Enable Server</button>
-      <video id="videox" width="320" height="240" controls></video>
+    </div>
+
+    <main>
+      <video id="videox" style="width: 100%; height: 100%;"></video>
+
+      <div v-if="webSocketServer != null">
+        <ul id="aaa">
+          <li v-for="(con, i) in webSocketServer.clients.entries" :key="i">hi</li>
+        </ul>
+      </div>
     </main>
   </div>
 </template>
@@ -34,9 +37,7 @@ export default {
     open(link) {
       this.$electron.shell.openExternal(link);
     },
-    enableServer() {
-      console.log("Ape kaden");
-
+    enableExpress() {
       const express = require("express");
       const app = express();
       const port = 4000;
@@ -49,37 +50,13 @@ export default {
       app.listen(port, () =>
         console.log(`Example app listening on port ${port}!`)
       );
-
+    },
+    enableServer() {
+      this.enableExpress();
       this.enableWebsocket();
+      this.enableCamera();
     },
-    handleStream(stream) {
-      console.log("hal");
-
-      const video = document.querySelector("#videox");
-      video.srcObject = stream;
-      video.onloadedmetadata = e => video.play();
-
-      const judulvid = document.querySelector("#judulvid");
-
-      console.log(stream);
-      var options = { mimeType: "video/webm; codecs=vp9" };
-      var mediaRecorder = new MediaRecorder(stream);
-
-      const canvas = document.createElement("canvas");
-      canvas.height = 720;
-      canvas.width = 1280;
-      const ctx = canvas.getContext("2d");
-
-      setInterval(() => {
-        ctx.drawImage(video, 0, 0, 1280, 720);
-        var base64Str = canvas.toDataURL("image/jpeg", 0.5);
-        this.sendImage(base64Str);
-      }, 1000 / 24);
-    },
-    handleError(e) {
-      console.log(e);
-    },
-    capturerEnable() {
+    enableCamera() {
       desktopCapturer.getSources(
         { types: ["window", "screen"] },
         (err, sources) => {
@@ -111,8 +88,32 @@ export default {
         }
       );
     },
+    handleStream(stream) {
+      console.log("hal");
+
+      const video = document.querySelector("#videox");
+      video.srcObject = stream;
+      video.onloadedmetadata = e => video.play();
+
+      const judulvid = document.querySelector("#judulvid");
+
+      console.log(stream);
+      var options = { mimeType: "video/webm; codecs=vp9" };
+      var mediaRecorder = new MediaRecorder(stream);
+
+      const canvas = document.createElement("canvas");
+      canvas.height = 720;
+      canvas.width = 1280;
+      const ctx = canvas.getContext("2d");
+
+      setInterval(() => {
+        ctx.drawImage(video, 0, 0, 1280, 720);
+        var base64Str = canvas.toDataURL("image/jpeg", 0.5);
+        this.sendImage(base64Str);
+      }, 1000 / 24);
+    },
     sendImage(message) {
-      this.connections.forEach(client => {
+      this.webSocketServer.clients.forEach(client => {
         client.send(JSON.stringify({ event: "imgbuff", data: message }));
       });
     },
@@ -143,7 +144,8 @@ export default {
     },
     handleConnection(ws) {
       console.log("a user connected");
-      this.connections.push(ws);
+
+      console.log(this.webSocketServer.clients);
 
       ws.on("disconnect", function() {
         console.log("user disconnected");

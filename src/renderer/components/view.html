@@ -18,9 +18,11 @@
         var full = 'ws://' + location.hostname + ':3000';
         console.log(full);
         var exampleSocket = new WebSocket(full);
+
         exampleSocket.onopen = function (event) {
             console.log("Here's some text that the server is urgently awaiting!");
         };
+        
         exampleSocket.onmessage = function (event) {
             let x = JSON.parse(event.data)
             imgPr.src = x.data;
