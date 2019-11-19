@@ -1,18 +1,16 @@
 <template>
   <div id="wrapper">
     <img id="logo" src="~@/assets/logo.png" alt="electron-vue" />
+
     <div>
       <button @click="enableServer">Enable Server</button>
+      <button @click="disableServer">Disable Server</button>
+      <span v-if="this.webSocketServer != null">Koneksi {{ this.clientCount }}</span>
     </div>
 
     <main>
-      <video id="videox" style="width: 100%; height: 100%;"></video>
-
-      <div v-if="webSocketServer != null">
-        <ul id="aaa">
-          <li v-for="(con, i) in webSocketServer.clients.entries" :key="i">hi</li>
-        </ul>
-      </div>
+      <!-- <video id="videox" style="height: 100%;"></video> -->
+      <canvas id="canvas" width="1280" height="720"></canvas>
     </main>
   </div>
 </template>
@@ -28,26 +26,30 @@ export default {
   components: { SystemInformation },
   data() {
     return {
-      connections: [],
+      clientCount: 0,
       webSocketServer: null,
-      serverEnabled: false
+      serverEnabled: false,
+      expressServer: null
     };
   },
   methods: {
+    updateClientCount: function() {
+      this.clientCount = this.webSocketServer.clients.size;
+    },
     open(link) {
       this.$electron.shell.openExternal(link);
     },
     enableExpress() {
       const express = require("express");
-      const app = express();
+      this.expressServer = express();
       const port = 4000;
 
-      app.get("/", (req, res) => {
+      this.expressServer.get("/", (req, res) => {
         // res.send("Hello World!");
         res.sendFile("view.html", { root: __dirname });
       });
 
-      app.listen(port, () =>
+      this.expressServer.listen(port, () =>
         console.log(`Example app listening on port ${port}!`)
       );
     },
@@ -55,6 +57,11 @@ export default {
       this.enableExpress();
       this.enableWebsocket();
       this.enableCamera();
+    },
+    disableServer() {
+      this.expressServer = null;
+      this.serverEnabled = false;
+      this.webSocketServer = null;
     },
     enableCamera() {
       desktopCapturer.getSources(
@@ -89,26 +96,24 @@ export default {
       );
     },
     handleStream(stream) {
-      console.log("hal");
-
-      const video = document.querySelector("#videox");
+      // const video = document.querySelector("#videox");
+      const video = document.createElement("video")
       video.srcObject = stream;
       video.onloadedmetadata = e => video.play();
-
-      const judulvid = document.querySelector("#judulvid");
 
       console.log(stream);
       var options = { mimeType: "video/webm; codecs=vp9" };
       var mediaRecorder = new MediaRecorder(stream);
 
-      const canvas = document.createElement("canvas");
+      // const canvas = document.createElement("canvas");
+      const canvas = document.querySelector("#canvas");
       canvas.height = 720;
       canvas.width = 1280;
       const ctx = canvas.getContext("2d");
 
       setInterval(() => {
         ctx.drawImage(video, 0, 0, 1280, 720);
-        var base64Str = canvas.toDataURL("image/jpeg", 0.5);
+        var base64Str = canvas.toDataURL("image/jpeg", 0.1);
         this.sendImage(base64Str);
       }, 1000 / 24);
     },
@@ -143,9 +148,15 @@ export default {
       ws.send("somethingx");
     },
     handleConnection(ws) {
-      console.log("a user connected");
+      this.updateClientCount();
 
-      console.log(this.webSocketServer.clients);
+      ws.on(
+        "close",
+        function() {
+          console.log("closed");
+          this.updateClientCount();
+        }.bind(this)
+      );
 
       ws.on("disconnect", function() {
         console.log("user disconnected");
@@ -160,10 +171,6 @@ export default {
       this.webSocketServer = new WebSocket.Server({ port: 3000 });
 
       this.webSocketServer.on("connection", this.handleConnection);
-    },
-    disableWebsocket() {
-      this.serverEnabled = false;
-      this.webSocketServer = null;
     }
   }
 };
