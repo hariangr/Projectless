@@ -14,6 +14,14 @@
         <p v-if="this.enableCompression">Kompresi to source ratio {{latestCompressionRate}}</p>
 
         <h3>Kualitas {{streamQuality}}</h3>
+
+        <select name="carlist" v-model="resolution" form="carform">
+          <option value="360">360p</option>
+          <option value="480">480p</option>
+          <option value="720">720p</option>
+          <option value="1080">1080p</option>
+        </select>
+        {{ this.resolutionData }}
       </form>
     </div>
 
@@ -32,6 +40,25 @@ import * as lzString from "./lz-string";
 const WebSocket = require("ws");
 import * as Express from "express";
 
+const resolutionDict = {
+  "360": {
+    h: 360,
+    w: 640
+  },
+  "480": {
+    h: 480,
+    w: 860
+  },
+  "720": {
+    h: 720,
+    w: 1280
+  },
+  "1080": {
+    h: 1080,
+    w: 1920
+  }
+};
+
 export default {
   name: "dashboard-page",
   components: { SystemInformation },
@@ -43,8 +70,25 @@ export default {
       expressServer: null,
       streamQuality: 30,
       enableCompression: true,
-      latestCompressionRate: 0
+      latestCompressionRate: 0,
+      frameSender: null,
+      resolution: 480,
+      resolutionData: resolutionDict[480]
     };
+  },
+  computed: {
+    canvas() {
+      return document.querySelector("#canvas");
+    }
+  },
+  watch: {
+    resolution: function(val) {
+      console.log(val);
+
+      this.resolutionData = resolutionDict[this.resolution];
+      this.canvas.height = this.resolutionData.h;
+      this.canvas.width = this.resolutionData.w;
+    }
   },
   methods: {
     updateClientCount: function() {
@@ -55,15 +99,15 @@ export default {
     },
     enableExpress() {
       const express = require("express");
-      this.expressServer = express();
+      const app = express();
       const port = 4000;
 
-      this.expressServer.get("/", (req, res) => {
+      app.get("/", (req, res) => {
         // res.send("Hello World!");
         res.sendFile("view.html", { root: __dirname });
       });
 
-      this.expressServer.listen(port, () =>
+      this.expressServer = app.listen(port, () =>
         console.log(`Example app listening on port ${port}!`)
       );
     },
@@ -73,15 +117,17 @@ export default {
       this.enableCamera();
     },
     disableServer() {
-      this.expressServer = null;
+      this.expressServer.close();
       this.serverEnabled = false;
-      this.webSocketServer = null;
+      this.webSocketServer.close();
+      clearInterval(this.frameSender);
     },
     enableCamera() {
       desktopCapturer.getSources(
         { types: ["window", "screen"] },
         (err, sources) => {
           sources.forEach(async element => {
+            console.log(element);
             console.log(element);
 
             if (element.name == "Entire screen") {
@@ -92,17 +138,17 @@ export default {
                     mandatory: {
                       chromeMediaSource: "desktop",
                       // chromeMediaSourceId: source.id,
-                      minWidth: 1280,
-                      maxWidth: 1280,
-                      minHeight: 720,
-                      maxHeight: 720
+                      minWidth: this.resolutionData.w,
+                      maxWidth: this.resolutionData.w,
+                      minHeight: this.resolutionData.h,
+                      maxHeight: this.resolutionData.h
                     }
                   }
                 });
 
                 this.handleStream(stream);
               } catch (e) {
-                this.handleError(e);
+                console.log(e);
               }
             }
           });
@@ -119,22 +165,30 @@ export default {
       var options = { mimeType: "video/webm; codecs=vp9" };
       var mediaRecorder = new MediaRecorder(stream);
 
-      // const canvas = document.createElement("canvas");
-      const canvas = document.querySelector("#canvas");
-      canvas.height = 720;
-      canvas.width = 1280;
+      this.canvas.height = this.resolutionData.h;
+      this.canvas.width = this.resolutionData.w;
       const ctx = canvas.getContext("2d");
 
-      setInterval(() => {
-        console.log(this.streamQuality / 100);
+      this.frameSender = setInterval(
+        function() {
+          console.log(this.streamQuality / 100);
 
-        ctx.drawImage(video, 0, 0, 1280, 720);
-        var base64Str = canvas.toDataURL(
-          "image/jpeg",
-          this.streamQuality / 100
-        );
-        this.sendImage(base64Str);
-      }, 1000 / 24);
+          ctx.drawImage(
+            video,
+            0,
+            0,
+            this.resolutionData.w,
+            this.resolutionData.h
+          );
+
+          var base64Str = canvas.toDataURL(
+            "image/jpeg",
+            (this.streamQuality / 100) * 1.0
+          );
+          this.sendImage(base64Str);
+        }.bind(this),
+        1000 / 24
+      );
     },
     sendImage(message) {
       if (this.enableCompression) {
