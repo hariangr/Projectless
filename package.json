@@ -19,11 +19,18 @@
   "build": {
     "productName": "project-server",
     "appId": "com.harianugrah.projectless",
+    "asar": false,
     "directories": {
       "output": "build"
     },
     "files": [
       "dist/electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "src/renderer/components/view.html",
+        "to": "app/dist/electron/view.html"
+      }
     ],
     "dmg": {
       "contents": [
