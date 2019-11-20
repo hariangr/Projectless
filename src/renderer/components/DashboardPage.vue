@@ -69,7 +69,7 @@ export default {
       serverEnabled: false,
       expressServer: null,
       streamQuality: 30,
-      enableCompression: true,
+      enableCompression: false,
       latestCompressionRate: 0,
       frameSender: null,
       resolution: 480,
